@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     influx_database: str = "home_assistant"
     influx_retention_policy: str = "one_year"
     influx_measurement: str = "*"
+    influx_allowed_databases: list[str] = Field(
+        default_factory=lambda: ["home_assistant", "tradeville"]
+    )
     influx_username: str
     influx_password: str
     influx_verify_tls: bool = True
@@ -27,6 +30,21 @@ class Settings(BaseSettings):
         if not value or any(character in value for character in ('"', "\\", "\n", "\r")):
             raise ValueError("InfluxDB identifier contains unsafe characters")
         return value
+
+    @field_validator("influx_allowed_databases")
+    @classmethod
+    def validate_allowed_databases(cls, values: list[str]) -> list[str]:
+        if not values:
+            raise ValueError("at least one allowed database is required")
+        for value in values:
+            cls.validate_identifier(value)
+        return list(dict.fromkeys(values))
+
+    def require_database_allowed(self, database: str) -> str:
+        self.validate_identifier(database)
+        if database not in self.influx_allowed_databases:
+            raise ValueError(f'database "{database}" is not allowed')
+        return database
 
     @property
     def qualified_measurement(self) -> str:

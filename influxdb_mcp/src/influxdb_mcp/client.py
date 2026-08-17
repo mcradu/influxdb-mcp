@@ -58,7 +58,7 @@ class InfluxClient:
 
 
 def rows_from_payload(
-    payload: dict[str, Any], *, include_measurement: bool = False
+    payload: dict[str, Any], *, include_measurement: bool = False, include_tags: bool = False
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for result in payload.get("results", []):
@@ -68,5 +68,7 @@ def rows_from_payload(
                 row = dict(zip(columns, values, strict=False))
                 if include_measurement and series.get("name"):
                     row["measurement"] = series["name"]
+                if include_tags and series.get("tags"):
+                    row["tags"] = series["tags"]
                 rows.append(row)
     return rows

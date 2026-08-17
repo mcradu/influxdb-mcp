@@ -52,3 +52,28 @@ def test_rows_from_payload_can_include_measurement() -> None:
     assert rows_from_payload(payload, include_measurement=True) == [
         {"time": 1, "value": 45.0, "measurement": "%"}
     ]
+
+
+def test_rows_from_payload_can_include_series_tags() -> None:
+    payload = {
+        "results": [
+            {
+                "series": [
+                    {
+                        "name": "tradeville_quotes",
+                        "tags": {"symbol": "TLV.RO", "currency": "RON"},
+                        "columns": ["time", "price"],
+                        "values": [[1, 28.08]],
+                    }
+                ]
+            }
+        ]
+    }
+    assert rows_from_payload(payload, include_measurement=True, include_tags=True) == [
+        {
+            "time": 1,
+            "price": 28.08,
+            "measurement": "tradeville_quotes",
+            "tags": {"symbol": "TLV.RO", "currency": "RON"},
+        }
+    ]

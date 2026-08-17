@@ -1,7 +1,8 @@
 # InfluxDB MCP for Home Assistant OS
 
-Read-only Model Context Protocol server for Home Assistant history stored in
-InfluxDB 1.8. It provides bounded, validated tools instead of arbitrary InfluxQL.
+Read-only Model Context Protocol server for Home Assistant, BVB/TradeVille, and
+other approved data stored in InfluxDB 1.8. It provides bounded, validated tools
+instead of arbitrary InfluxQL.
 
 ## Tools
 
@@ -10,6 +11,9 @@ InfluxDB 1.8. It provides bounded, validated tools instead of arbitrary InfluxQL
 - `latest_value`: retrieve the newest stored numeric value.
 - `entity_history`: retrieve raw or aggregated history for one entity.
 - `compare_entities`: retrieve aligned histories for up to 20 entities.
+- `list_databases`, `list_retention_policies`, `list_measurements`: discover schemas.
+- `describe_measurement`, `list_tag_values`: inspect fields, tags, and tag values.
+- `latest_point`, `series_history`: query bounded generic series such as BVB quotes.
 
 All tools are read-only. Time ranges, result sizes, identifiers, aggregations, and
 grouping windows are validated before a query reaches InfluxDB. By default the
@@ -17,6 +21,13 @@ server searches every measurement in the configured database and retention polic
 which supports Home Assistant's unit-based measurements such as `%`, `W`, `kWh`,
 and `°C`. Set `influx_measurement` to a specific name only when intentionally
 restricting access to one measurement.
+
+Generic tools can access only databases listed in `influx_allowed_databases`. The
+InfluxDB account must also have `READ` permission on each database. For BVB data:
+
+```sql
+GRANT READ ON "tradeville" TO "chatgpt_mcp";
+```
 
 ## InfluxDB account
 
