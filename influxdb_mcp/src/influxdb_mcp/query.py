@@ -110,6 +110,6 @@ def build_entity_list_query(settings: Settings, limit: int) -> str:
 
 def build_latest_query(settings: Settings, entity_id: str) -> str:
     return (
-        f'SELECT last("value") AS "value" FROM {settings.qualified_measurement} '
-        f"WHERE {entity_filter(entity_id)}"
+        f'SELECT "value" FROM {settings.qualified_measurement} '
+        f"WHERE {entity_filter(entity_id)} ORDER BY time DESC LIMIT 1"
     )

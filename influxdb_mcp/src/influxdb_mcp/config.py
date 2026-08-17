@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     influx_url: str = "http://a0d7b954-influxdb:8086"
     influx_database: str = "home_assistant"
     influx_retention_policy: str = "one_year"
-    influx_measurement: str = "state"
+    influx_measurement: str = "*"
     influx_username: str
     influx_password: str
     influx_verify_tls: bool = True
@@ -30,6 +30,11 @@ class Settings(BaseSettings):
 
     @property
     def qualified_measurement(self) -> str:
+        if self.influx_measurement == "*":
+            return (
+                f'"{self.influx_database}".'
+                f'"{self.influx_retention_policy}"./.*/'
+            )
         return (
             f'"{self.influx_database}".'
             f'"{self.influx_retention_policy}".'
@@ -40,4 +45,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()  # type: ignore[call-arg]
-

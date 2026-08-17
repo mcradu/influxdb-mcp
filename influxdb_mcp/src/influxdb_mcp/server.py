@@ -46,17 +46,22 @@ def influx_health() -> dict[str, Any]:
 
 @mcp.tool()
 def list_entities(limit: int = 1000) -> list[str]:
-    """List Home Assistant entity object IDs stored in the configured measurement."""
+    """List Home Assistant entity object IDs stored in the configured measurements."""
     payload = client.query(build_entity_list_query(settings, limit))
-    return [str(row["value"]) for row in rows_from_payload(payload) if row.get("value")]
+    entities = {
+        str(row["value"]) for row in rows_from_payload(payload) if row.get("value")
+    }
+    safe_limit = min(max(limit, 1), settings.mcp_max_points)
+    return sorted(entities)[:safe_limit]
 
 
 @mcp.tool()
 def latest_value(entity_id: str) -> dict[str, Any]:
     """Return the most recent stored numeric value for one Home Assistant entity."""
     payload = client.query(build_latest_query(settings, entity_id))
-    rows = rows_from_payload(payload)
-    return {"entity_id": entity_id, "point": rows[0] if rows else None}
+    rows = rows_from_payload(payload, include_measurement=True)
+    point = max(rows, key=lambda row: row.get("time", 0), default=None)
+    return {"entity_id": entity_id, "point": point}
 
 
 @mcp.tool()
@@ -76,7 +81,8 @@ def entity_history(
     query = build_history_query(
         settings, entity_id, start, end, aggregation, window, limit
     )
-    rows = rows_from_payload(client.query(query))
+    rows = rows_from_payload(client.query(query), include_measurement=True)
+    rows.sort(key=lambda row: row.get("time", 0))
     return {
         "entity_id": entity_id,
         "aggregation": aggregation.value,
@@ -110,7 +116,9 @@ def compare_entities(
             window,
             limit_per_entity,
         )
-        series[entity_id] = rows_from_payload(client.query(query))
+        rows = rows_from_payload(client.query(query), include_measurement=True)
+        rows.sort(key=lambda row: row.get("time", 0))
+        series[entity_id] = rows
     return {
         "aggregation": aggregation.value,
         "window": None if aggregation == Aggregation.RAW else window,

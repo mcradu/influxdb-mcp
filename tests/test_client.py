@@ -1,6 +1,5 @@
 import httpx
 import respx
-
 from influxdb_mcp.client import InfluxClient, rows_from_payload
 from influxdb_mcp.config import Settings
 
@@ -35,3 +34,21 @@ def test_rows_from_payload() -> None:
         {"time": 2, "value": 46.0},
     ]
 
+
+def test_rows_from_payload_can_include_measurement() -> None:
+    payload = {
+        "results": [
+            {
+                "series": [
+                    {
+                        "name": "%",
+                        "columns": ["time", "value"],
+                        "values": [[1, 45.0]],
+                    }
+                ]
+            }
+        ]
+    }
+    assert rows_from_payload(payload, include_measurement=True) == [
+        {"time": 1, "value": 45.0, "measurement": "%"}
+    ]

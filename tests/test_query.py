@@ -1,11 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from influxdb_mcp.config import Settings
 from influxdb_mcp.query import (
     Aggregation,
     build_history_query,
+    build_latest_query,
     entity_filter,
     validate_window,
 )
@@ -59,6 +59,18 @@ def test_build_history_query_is_bounded(settings: Settings) -> None:
     assert "GROUP BY time(1h) fill(none)" in query
     assert "LIMIT 100" in query
     assert "ss_battery_soc" in query
+
+
+def test_all_measurements_are_qualified_to_database_and_retention_policy(
+    settings: Settings,
+) -> None:
+    assert settings.qualified_measurement == '"home_assistant"."one_year"./.*/'
+
+
+def test_latest_query_reads_one_candidate_per_measurement(settings: Settings) -> None:
+    query = build_latest_query(settings, "ss_battery_soc")
+    assert 'SELECT "value" FROM "home_assistant"."one_year"./.*/' in query
+    assert "ORDER BY time DESC LIMIT 1" in query
 
 
 def test_range_limit_is_enforced(settings: Settings) -> None:
