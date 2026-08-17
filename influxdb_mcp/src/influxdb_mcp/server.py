@@ -6,6 +6,17 @@ from starlette.responses import JSONResponse
 
 from influxdb_mcp.client import InfluxClient, rows_from_payload
 from influxdb_mcp.config import get_settings
+from influxdb_mcp.generic_query import (
+    build_field_keys_query,
+    build_generic_history_query,
+    build_generic_latest_query,
+    build_list_databases_query,
+    build_list_measurements_query,
+    build_list_retention_policies_query,
+    build_tag_keys_query,
+    build_tag_values_query,
+    rows_with_values,
+)
 from influxdb_mcp.query import (
     Aggregation,
     build_entity_list_query,
@@ -18,9 +29,9 @@ client = InfluxClient(settings)
 
 
 mcp = FastMCP(
-    "Home Assistant InfluxDB History",
+    "Read-only InfluxDB Explorer",
     instructions=(
-        "Read-only historical access to Home Assistant time-series data. "
+        "Read-only bounded access to allowed InfluxDB databases and Home Assistant history. "
         "Use entity IDs without the sensor. prefix when that is how InfluxDB stores them. "
         "Never claim that these tools can modify or delete data."
     ),
@@ -42,6 +53,124 @@ async def health(_: Request) -> JSONResponse:
 def influx_health() -> dict[str, Any]:
     """Check connectivity and report the InfluxDB server version."""
     return client.ping()
+
+
+@mcp.tool()
+def list_databases() -> list[str]:
+    """List InfluxDB databases visible to the read-only account and allowed by MCP."""
+    rows = rows_from_payload(client.query(build_list_databases_query()))
+    visible = {str(row["name"]) for row in rows if row.get("name")}
+    return sorted(visible.intersection(settings.influx_allowed_databases))
+
+
+@mcp.tool()
+def list_retention_policies(database: str) -> list[dict[str, Any]]:
+    """List retention policies for one allowed database."""
+    query = build_list_retention_policies_query(settings, database)
+    return rows_from_payload(client.query(query))
+
+
+@mcp.tool()
+def list_measurements(database: str, limit: int = 1000) -> list[str]:
+    """List measurements in one allowed database."""
+    query = build_list_measurements_query(settings, database, limit)
+    rows = rows_from_payload(client.query(query))
+    return sorted({str(row["name"]) for row in rows if row.get("name")})
+
+
+@mcp.tool()
+def describe_measurement(database: str, measurement: str) -> dict[str, Any]:
+    """List field keys and tag keys for a measurement in an allowed database."""
+    field_rows = rows_from_payload(
+        client.query(build_field_keys_query(settings, database, measurement))
+    )
+    tag_rows = rows_from_payload(
+        client.query(build_tag_keys_query(settings, database, measurement))
+    )
+    return {
+        "database": database,
+        "measurement": measurement,
+        "fields": field_rows,
+        "tags": tag_rows,
+    }
+
+
+@mcp.tool()
+def list_tag_values(
+    database: str, measurement: str, tag: str, limit: int = 1000
+) -> list[str]:
+    """List values of one tag in a measurement from an allowed database."""
+    query = build_tag_values_query(settings, database, measurement, tag, limit)
+    rows = rows_from_payload(client.query(query))
+    return sorted({str(row["value"]) for row in rows if row.get("value") is not None})
+
+
+@mcp.tool()
+def latest_point(
+    database: str,
+    retention_policy: str,
+    measurement: str,
+    fields: list[str],
+    tag_filters: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Return the newest point from a bounded series in an allowed database."""
+    query = build_generic_latest_query(
+        settings, database, retention_policy, measurement, fields, tag_filters
+    )
+    rows = rows_with_values(
+        rows_from_payload(client.query(query), include_measurement=True, include_tags=True)
+    )
+    point = max(rows, key=lambda row: row.get("time", 0), default=None)
+    return {
+        "database": database,
+        "retention_policy": retention_policy,
+        "measurement": measurement,
+        "point": point,
+    }
+
+
+@mcp.tool()
+def series_history(
+    database: str,
+    retention_policy: str,
+    measurement: str,
+    fields: list[str],
+    start: str,
+    end: str,
+    tag_filters: dict[str, str] | None = None,
+    aggregation: Aggregation = Aggregation.RAW,
+    window: str = "5m",
+    limit: int = 1000,
+) -> dict[str, Any]:
+    """Read bounded raw or aggregated history from an allowed InfluxDB series."""
+    query = build_generic_history_query(
+        settings,
+        database,
+        retention_policy,
+        measurement,
+        fields,
+        tag_filters,
+        start,
+        end,
+        aggregation,
+        window,
+        limit,
+    )
+    rows = rows_with_values(
+        rows_from_payload(client.query(query), include_measurement=True, include_tags=True)
+    )
+    rows.sort(key=lambda row: row.get("time", 0))
+    safe_limit = min(max(limit, 1), settings.mcp_max_points)
+    return {
+        "database": database,
+        "retention_policy": retention_policy,
+        "measurement": measurement,
+        "aggregation": aggregation.value,
+        "window": None if aggregation == Aggregation.RAW else window,
+        "points": rows,
+        "count": len(rows),
+        "truncated": len(rows) >= safe_limit,
+    }
 
 
 @mcp.tool()
