@@ -1,0 +1,38 @@
+name: InfluxDB MCP
+version: "0.2.0"
+slug: influxdb_mcp
+description: Read-only Home Assistant history through OpenAI Secure MCP Tunnel
+url: https://github.com/mcradu/influxdb-mcp
+arch:
+  - amd64
+startup: application
+boot: auto
+init: false
+stage: experimental
+tmpfs: true
+options:
+  influx_url: http://a0d7b954-influxdb:8086
+  influx_database: home_assistant
+  influx_retention_policy: one_year
+  influx_measurement: state
+  influx_username: chatgpt_mcp
+  influx_password: null
+  influx_verify_tls: true
+  control_plane_tunnel_id: null
+  control_plane_api_key: null
+  max_range_days: 366
+  max_points: 5000
+  log_level: info
+schema:
+  influx_url: url
+  influx_database: str
+  influx_retention_policy: str
+  influx_measurement: str
+  influx_username: str
+  influx_password: password
+  influx_verify_tls: bool
+  control_plane_tunnel_id: str
+  control_plane_api_key: password
+  max_range_days: int(1,3650)
+  max_points: int(10,50000)
+  log_level: list(debug|info|warn|error)

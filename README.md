@@ -1,4 +1,4 @@
-# InfluxDB MCP
+# InfluxDB MCP for Home Assistant OS
 
 Read-only Model Context Protocol server for Home Assistant history stored in
 InfluxDB 1.8. It provides bounded, validated tools instead of arbitrary InfluxQL.
@@ -28,12 +28,24 @@ SHOW GRANTS FOR "chatgpt_mcp";
 Do not commit the password. Copy `.env.example` to `.env` on the deployment host
 and fill it locally.
 
+## Install on Home Assistant OS
+
+Add this repository in **Settings → Apps → App store → Repositories**:
+
+```text
+https://github.com/mcradu/influxdb-mcp
+```
+
+Install **InfluxDB MCP**, fill its Configuration page, start it, and inspect the
+logs. The repository must be accessible to Home Assistant when it refreshes the
+app store.
+
 ## Local development
 
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-python -m pip install -e '.[dev]'
+python -m pip install -e './influxdb_mcp[dev]'
 pytest
 ruff check .
 ```
@@ -56,43 +68,11 @@ The health endpoint is:
 http://127.0.0.1:8000/health
 ```
 
-## Docker deployment
-
-The Compose file expects an existing Docker network that can resolve the Home
-Assistant add-on hostname `a0d7b954-influxdb`. Set `HA_DOCKER_NETWORK` in `.env`
-if that network is not named `hassio`.
-
-```bash
-cp .env.example .env
-docker compose config
-docker compose build
-docker compose up -d
-docker compose logs --tail=100 influxdb-mcp
-curl --fail http://127.0.0.1:8000/health
-```
-
-The published port binds only to loopback. Do not publish InfluxDB port 8086.
-
 ## Secure MCP Tunnel
 
-Use OpenAI Secure MCP Tunnel so the private MCP server does not need public
-ingress. Create a tunnel in OpenAI Platform and run `tunnel-client` inside the
-same network boundary with the local MCP URL:
-
-```bash
-export CONTROL_PLANE_API_KEY='<set-locally>'
-
-tunnel-client init \
-  --sample sample_mcp_http_local \
-  --profile influxdb-mcp \
-  --tunnel-id '<tunnel_id>' \
-  --mcp-server-url http://127.0.0.1:8000/mcp
-
-tunnel-client doctor --profile influxdb-mcp --explain
-tunnel-client run --profile influxdb-mcp
-```
-
-Keep the API key outside Git. Once the client is healthy, create a developer-mode
+The app bundles the official OpenAI `tunnel-client` v0.0.11. Tunnel ID and runtime
+API key are entered through the Home Assistant app configuration and are stored
+by Supervisor, never in this repository. Once healthy, create a developer-mode
 app in ChatGPT, choose **Tunnel**, and select the same tunnel.
 
 ## Operational limits
@@ -102,4 +82,3 @@ app in ChatGPT, choose **Tunnel**, and select the same tunnel.
 - Maximum comparison width: 20 entities.
 - Supported aggregation windows: seconds, minutes, hours, days, and weeks.
 - Only the configured database, retention policy, and measurement are queried.
-
