@@ -1,5 +1,5 @@
 name: InfluxDB MCP
-version: "0.4.0"
+version: "0.4.1"
 slug: influxdb_mcp
 description: Read-only Home Assistant history through OpenAI Secure MCP Tunnel
 url: https://github.com/mcradu/influxdb-mcp
