@@ -29,6 +29,20 @@ InfluxDB account must also have `READ` permission on each database. For BVB data
 GRANT READ ON "tradeville" TO "chatgpt_mcp";
 ```
 
+`influx_database` and `influx_retention_policy` remain the single Home Assistant
+defaults used by the entity tools. Do not put multiple database names in
+`influx_database`. Multi-database access is enabled only through
+`influx_allowed_databases`; generic tools then select `database` and
+`retention_policy` explicitly. A typical configuration is:
+
+```yaml
+influx_database: home_assistant
+influx_retention_policy: one_year
+influx_allowed_databases:
+  - home_assistant
+  - tradeville
+```
+
 ## InfluxDB account
 
 Enable authentication and create a dedicated non-admin account in Chronograf or
@@ -96,4 +110,5 @@ app in ChatGPT, choose **Tunnel**, and select the same tunnel.
 - Default maximum result size: 5,000 points per entity.
 - Maximum comparison width: 20 entities.
 - Supported aggregation windows: seconds, minutes, hours, days, and weeks.
-- Only the configured database, retention policy, and measurement are queried.
+- Home Assistant entity tools query only the configured default database, retention
+  policy, and measurement; generic tools query only explicitly allowlisted databases.
