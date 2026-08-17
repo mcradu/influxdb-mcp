@@ -1,0 +1,26 @@
+services:
+  influxdb-mcp:
+    build:
+      context: .
+    image: influxdb-mcp:${IMAGE_TAG:-local}
+    container_name: influxdb-mcp
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - homeassistant
+    ports:
+      - "127.0.0.1:${MCP_PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+networks:
+  homeassistant:
+    external: true
+    name: ${HA_DOCKER_NETWORK:-hassio}
+
