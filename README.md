@@ -12,7 +12,11 @@ InfluxDB 1.8. It provides bounded, validated tools instead of arbitrary InfluxQL
 - `compare_entities`: retrieve aligned histories for up to 20 entities.
 
 All tools are read-only. Time ranges, result sizes, identifiers, aggregations, and
-grouping windows are validated before a query reaches InfluxDB.
+grouping windows are validated before a query reaches InfluxDB. By default the
+server searches every measurement in the configured database and retention policy,
+which supports Home Assistant's unit-based measurements such as `%`, `W`, `kWh`,
+and `°C`. Set `influx_measurement` to a specific name only when intentionally
+restricting access to one measurement.
 
 ## InfluxDB account
 
