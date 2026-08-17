@@ -4,6 +4,7 @@ from mcp.server.fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+from influxdb_mcp import __version__
 from influxdb_mcp.client import InfluxClient, rows_from_payload
 from influxdb_mcp.config import get_settings
 from influxdb_mcp.generic_query import (
@@ -51,8 +52,15 @@ async def health(_: Request) -> JSONResponse:
 
 @mcp.tool()
 def influx_health() -> dict[str, Any]:
-    """Check connectivity and report the InfluxDB server version."""
-    return client.ping()
+    """Check connectivity and report safe MCP and InfluxDB configuration details."""
+    result = client.ping()
+    return {
+        **result,
+        "mcp_version": __version__,
+        "default_database": settings.influx_database,
+        "default_retention_policy": settings.influx_retention_policy,
+        "allowed_databases": settings.influx_allowed_databases,
+    }
 
 
 @mcp.tool()
